@@ -3,7 +3,7 @@ import pandas as pd
 
 def generar_excel() -> None:
     datos = {
-        "dni": [10526358, 15121313, 15161414]
+        "dni": [10526358, 15121313, 60069778]
     }
 
     df = pd.DataFrame(datos)
