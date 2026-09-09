@@ -80,11 +80,13 @@ def consultar_dni_onpe(dni: str) -> dict[str, Any]:
         soup = BeautifulSoup(response.text, "html.parser")
 
         form = soup.find("form")
-        action = form.get("action") if form else "/inicio"
-        method = (form.get("method") or "get").lower()
-
+        action = "/inicio"
+        method = "get"
         payload = {}
-        if form:
+
+        if form is not None:
+            action = form.get("action") or "/inicio"
+            method = (form.get("method") or "get").lower()
             for input_tag in form.find_all("input"):
                 name = input_tag.get("name")
                 if name:
@@ -95,7 +97,7 @@ def consultar_dni_onpe(dni: str) -> dict[str, Any]:
         payload["documento"] = dni
         payload["tipoDocumento"] = "DNI"
 
-        if method == "post":
+        if form is not None and method == "post":
             final_response = session.post(urljoin(BASE_URL, action), data=payload, timeout=20)
         else:
             final_response = session.get(urljoin(BASE_URL, action), params=payload, timeout=20)
@@ -160,6 +162,22 @@ def main() -> None:
         return
 
     resultados = [consultar_dni_onpe(dni) for dni in dnis]
+
+    df_resultado = pd.DataFrame(
+        [
+            {
+                "dni": item["dni"],
+                "miembro_de_mesa": item["miembro_de_mesa"],
+                "nombres": item["nombres"],
+                "ubicación": item["ubicacion"],
+                "dirección": item["direccion_local"],
+            }
+            for item in resultados
+        ]
+    )
+
+    df_resultado.to_excel("resultado_consulta.xlsx", index=False, engine="openpyxl")
+    print(f"Se guardaron {len(df_resultado)} registros en resultado_consulta.xlsx")
 
     for item in resultados:
         print("=" * 80)
