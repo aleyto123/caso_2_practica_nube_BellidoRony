@@ -16,7 +16,7 @@ Esto crea el archivo `dnis.xlsx` con la columna `dni` y los siguientes valores:
 - 15121313
 - 15161414
 
-## 2. Ejecutar el scraper localmente
+## 2. Ejecutar la aplicación web localmente
 
 Instala las dependencias del proyecto:
 
@@ -24,18 +24,19 @@ Instala las dependencias del proyecto:
 pip install -r requirements.txt
 ```
 
-Luego ejecuta el script principal:
+Luego ejecuta el servidor Flask:
 
 ```bash
 python caso2.py
 ```
 
-El script:
+Abre `http://localhost:5000`. La aplicación permite:
 
-- lee los DNIs desde `dnis.xlsx`
-- consulta la información en la web de la ONPE
-- extrae datos como `miembro_de_mesa`, `nombres`, `ubicación` y `dirección`
-- guarda el resultado final en `resultado_consulta.xlsx`
+- consultar un DNI individual desde el campo de texto
+- subir un archivo `.xlsx` con una columna `dni` para una consulta masiva
+- ver los resultados y descargar `resultado_consulta.xlsx`
+
+La aplicación consulta la información en la web de la ONPE y extrae datos como `miembro_de_mesa`, `nombres`, `ubicación` y `dirección`.
 
 ## 3. Construir y ejecutar el contenedor con Docker
 
@@ -44,37 +45,38 @@ Se incluye un Dockerfile multietapa llamado `Dockerfile.caso2.multistage`.
 ### Construir la imagen
 
 ```bash
-docker build -f Dockerfile.caso2.multistage -t caso2-onpe .
+docker build -f Dockerfile.caso2.multistage -t caso2-onpe-playwright .
 ```
 
-### Ejecutar el contenedor
+### Ejecutar el contenedor en Windows PowerShell
 
-Para que el contenedor pueda acceder a `dnis.xlsx` del proyecto local, monta el directorio actual dentro del contenedor:
-
-```bash
-docker run --rm -v "${PWD}:/app" caso2-onpe
-```
-
-En Windows PowerShell, también puede usarse:
+Para que el contenedor pueda leer y escribir los archivos del proyecto local, monta el directorio actual dentro de `/app`:
 
 ```powershell
-docker run --rm -v "${PWD}:/app" caso2-onpe
+docker run --rm -p 5001:5000 -v "${PWD}:/app" caso2-onpe-playwright
 ```
 
-Esto ejecuta el comando por defecto del contenedor:
+### Ejecutar el contenedor en Windows CMD
+
+```cmd
+docker run --rm -p 5001:5000 -v "%cd%:/app" caso2-onpe-playwright
+```
+
+Después abre `http://localhost:5001`. El contenedor ejecuta Flask con Chromium y una pantalla virtual para reproducir el flujo real de ONPE:
 
 ```bash
-python caso2.py
+/app/start.sh
 ```
 
 ## 4. Salidas esperadas
 
 Al ejecutar el flujo, se generan los siguientes archivos:
 
-- `dnis.xlsx`: archivo base con los DNIs de prueba
-- `resultado_consulta.xlsx`: resultados extraídos y procesados en un DataFrame
+- `dnis.xlsx`: archivo de entrada opcional con los DNIs de prueba
+- `resultado_consulta.xlsx`: resultados extraídos y procesados en un DataFrame; también está disponible desde el botón de descarga
 
 ## Notas
 
-- El scraper maneja errores de consulta y evita que la ejecución falle completamente en caso de que la ONPE responda con un estado inesperado.
-- Si el sitio web cambia su estructura HTML, puede requerirse ajustar las reglas de extracción en `caso2.py`.
+- La aplicación reproduce con Playwright el flujo oficial: abre ONPE, escribe el DNI, pulsa `Consultar` y extrae la pantalla de resultados.
+- El contenedor usa Chromium y Xvfb, por lo que puede superar el reto que bloqueaba las peticiones directas de `requests`.
+- El Excel tiene encabezados con estilo, filtros, congelado de la primera fila, ajuste de texto y anchos limitados para que las referencias largas no oculten el resto de columnas.
